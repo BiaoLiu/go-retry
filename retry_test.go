@@ -1,55 +1,76 @@
 package retry
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 	"time"
 )
 
 func TestMaxRetryCount(t *testing.T) {
+	var err error
 	r := NewRetry(0, 0, 10, 0)
 
-	for i := 0; i < 20; i++ {
-		err := r.Do(func(firstRetryTime int64, retriedCount int64) error {
+	for {
+		err = r.Do(func(firstRetryTime int64, retriedCount int64) error {
 			fmt.Println("retriedCount...", retriedCount)
 			return nil
 		})
-		if err != nil {
-			fmt.Println(err)
+		if err == nil {
+			break
 		}
+		if errors.Is(err, ErrMaxRetryCount) {
+			break
+		}
+	}
+	if err != nil {
+		fmt.Println(err)
 	}
 	fmt.Println("total retriedCount", r.RetriedCount())
 }
 
 func TestMaxRetryTime(t *testing.T) {
+	var err error
 	r := NewRetry(0, 0, 0, 3*time.Second)
 
-	for i := 0; i < 20; i++ {
-		err := r.Do(func(firstRetryTime int64, retriedCount int64) error {
+	for {
+		err = r.Do(func(firstRetryTime int64, retriedCount int64) error {
 			fmt.Println("retriedCount...", retriedCount)
 			return nil
 		})
-		if err != nil {
-			fmt.Println(err)
+		if err == nil {
+			break
+		}
+		if errors.Is(err, ErrMaxRetryTime) {
+			break
 		}
 		time.Sleep(time.Second)
+	}
+	if err != nil {
+		fmt.Println(err)
 	}
 	fmt.Println("total retriedCount", r.RetriedCount())
 }
 
 func TestMaxRetryCountAndTime(t *testing.T) {
-	d := 1 * time.Second
-	r := NewRetry(0, 0, 5000, d)
+	var err error
+	r := NewRetry(0, 0, 5000, 1*time.Second)
 
 	for {
-		err := r.Do(func(firstRetryTime int64, retriedCount int64) error {
+		err = r.Do(func(firstRetryTime int64, retriedCount int64) error {
 			fmt.Println("retriedCount...", retriedCount)
 			return nil
 		})
-		if err != nil {
-			fmt.Println(err)
+		if err == nil {
 			break
 		}
+		if errors.Is(err, ErrMaxRetryCount) || errors.Is(err, ErrMaxRetryTime) {
+			break
+		}
+		time.Sleep(3 * time.Second)
+	}
+	if err != nil {
+		fmt.Println(err)
 	}
 	fmt.Println("total retriedCount", r.RetriedCount())
 }
